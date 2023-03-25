@@ -9,6 +9,7 @@ include("tree.jl")
 using .FaxConstants
 using .LookupTree
 using Images
+using WAV, FFTW
 
 function readdata(fn)
     open(fn, "r") do io
@@ -100,8 +101,16 @@ function constructimage(colours, runlengths)
     return Gray.(transpose(reduce(hcat, m)))
 end
 
-function demodulate(wav)
-    #TODO implement
+function demodulate(wavfile)
+    y, fs = wavread(wavfile)
+    y = dropdims(y, dims=2)
+    chunksize = round(Int, fs/MODULATIONRATE)
+    m = reshape(y, round(Int, length(y)/chunksize), chunksize)
+    #w_hamming = 0.54 .+ 0.46*cos.(2pi*collect(-0.5:MODULATIONRATE/fs:prevfloat(0.5)))
+    #m = w_hamming' .* m
+    m = map(r -> fftshift(fft(r)), eachrow(m))
+    m = reduce(vcat, [r' for r in m])
+    #filter, map into constellation diagram, decode...
 end
 
 datastr = readdata(ARGS[1])
